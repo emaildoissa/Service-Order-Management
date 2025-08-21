@@ -1,0 +1,18 @@
+# Node (React/Vue)
+node_modules/
+dist/
+build/
+
+# Go
+bin/
+*.exe
+*.log
+*.out
+
+# IDE
+.vscode/
+.idea/
+
+# Configurações locais
+.env
+.DS_Store
