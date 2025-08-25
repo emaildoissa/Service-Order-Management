@@ -9,33 +9,20 @@ import (
 	"google.golang.org/api/option"
 )
 
-var (
-	FirestoreClient *firestore.Client
-	Ctx             context.Context
-)
-
-func InitFirebase(credentialsPath string) error {
-	Ctx = context.Background()
-
+func InitFirebase(ctx context.Context, credentialsPath string) (*firestore.Client, error) {
 	sa := option.WithCredentialsFile(credentialsPath)
-	app, err := firebase.NewApp(Ctx, nil, sa)
+	app, err := firebase.NewApp(ctx, nil, sa)
 	if err != nil {
-		log.Printf("Erro ao inicializar Firebase: %v", err)
-		return err
+		log.Printf("Erro ao inicializar Firebase App: %v", err)
+		return nil, err
 	}
 
-	FirestoreClient, err = app.Firestore(Ctx)
+	client, err := app.Firestore(ctx)
 	if err != nil {
-		log.Printf("Erro ao conectar Firestore: %v", err)
-		return err
+		log.Printf("Erro ao conectar com o Firestore: %v", err)
+		return nil, err
 	}
 
 	log.Println("✅ Conectado ao Firebase Firestore")
-	return nil
-}
-
-func Close() {
-	if FirestoreClient != nil {
-		FirestoreClient.Close()
-	}
+	return client, nil
 }

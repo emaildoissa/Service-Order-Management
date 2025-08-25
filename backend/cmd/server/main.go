@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -23,30 +24,39 @@ func main() {
 		credentialsPath = "configs/firebase-credentials.json"
 	}
 
-	if err := database.InitFirebase(credentialsPath); err != nil {
+	ctx := context.Background()
+	client, err := database.InitFirebase(ctx, credentialsPath)
+	if err != nil {
 		log.Fatal("Erro ao inicializar Firebase:", err)
 	}
-	defer database.Close()
+	defer client.Close()
 
 	r := mux.NewRouter()
 
-	// Subrouter para /api
+	// Injeção de Dependência
+	customerHandler := handlers.NewCustomerHandler(ctx, client)
+	serviceOrderHandler := handlers.NewServiceOrderHandler(ctx, client)
+	financialHandler := handlers.NewFinancialHandler(ctx, client)
+
 	api := r.PathPrefix("/api").Subrouter()
 
-	// ROTAS ORIGINAIS
-	api.HandleFunc("/customers", handlers.CreateCustomer).Methods("POST", "OPTIONS")
-	api.HandleFunc("/customers", handlers.SearchCustomers).Methods("GET", "OPTIONS")
-	api.HandleFunc("/customers/{id}", handlers.GetCustomerByID).Methods("GET", "OPTIONS")
-	api.HandleFunc("/service-orders", handlers.CreateServiceOrder).Methods("POST", "OPTIONS")
-	api.HandleFunc("/customers/{customerId}/service-orders", handlers.GetCustomerServiceOrders).Methods("GET", "OPTIONS")
-	api.HandleFunc("/service-orders/{id}/close", handlers.CloseServiceOrder).Methods("PUT", "OPTIONS")
-	api.HandleFunc("/service-orders/{id}", handlers.UpdateServiceOrder).Methods("PUT", "OPTIONS")
-	api.HandleFunc("/cep/{cep}", handlers.BuscarCEP).Methods("GET", "OPTIONS")
-	api.HandleFunc("/customers/{id}", handlers.UpdateCustomer).Methods("PUT", "OPTIONS")
+	// Rotas de Clientes
+	api.HandleFunc("/customers", customerHandler.CreateCustomer).Methods("POST")
+	api.HandleFunc("/customers", customerHandler.SearchCustomers).Methods("GET")
+	api.HandleFunc("/customers/{id}", customerHandler.GetCustomerByID).Methods("GET")
+	api.HandleFunc("/customers/{id}", customerHandler.UpdateCustomer).Methods("PUT")
+	api.HandleFunc("/cep/{cep}", handlers.BuscarCEP).Methods("GET")
 
-	// 👈 ROTAS FINANCEIRAS (ADICIONADAS)
-	api.HandleFunc("/financials/summary", handlers.GetFinancialSummary).Methods("GET", "OPTIONS")
-	api.HandleFunc("/open-orders", handlers.GetOpenOrders).Methods("GET", "OPTIONS")
+	// Rotas de Ordens de Serviço
+	api.HandleFunc("/service-orders", serviceOrderHandler.CreateServiceOrder).Methods("POST")
+	api.HandleFunc("/customers/{customerId}/service-orders", serviceOrderHandler.GetCustomerServiceOrders).Methods("GET")
+	api.HandleFunc("/service-orders/{id}", serviceOrderHandler.UpdateServiceOrder).Methods("PUT")
+	api.HandleFunc("/service-orders/{id}/close", serviceOrderHandler.CloseServiceOrder).Methods("PUT")
+
+	// Rotas Financeiras
+	api.HandleFunc("/financials/summary", financialHandler.GetFinancialSummary).Methods("GET")
+	api.HandleFunc("/financials/by-period", financialHandler.GetRevenueByPeriod).Methods("GET")
+	api.HandleFunc("/open-orders", financialHandler.GetOpenOrders).Methods("GET")
 
 	// CORS
 	corsHandler := gorillahandlers.CORS(
@@ -62,8 +72,5 @@ func main() {
 	}
 
 	log.Printf("🚀 Servidor rodando na porta %s", port)
-	log.Printf("🌐 CORS configurado para http://localhost:3000")
-	log.Printf("📊 Rotas financeiras ativas: /api/financials/summary, /api/open-orders")
-
 	log.Fatal(http.ListenAndServe(":"+port, corsHandler))
 }

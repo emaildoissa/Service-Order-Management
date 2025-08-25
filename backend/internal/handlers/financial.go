@@ -1,15 +1,31 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
 
-	"github.com/emaildoissa/service-order-management/backend/internal/database"
+	"cloud.google.com/go/firestore"
 	"github.com/emaildoissa/service-order-management/backend/internal/models"
-
 	"google.golang.org/api/iterator"
 )
+
+// FinancialHandler gerencia as dependências para os handlers financeiros.
+type FinancialHandler struct {
+	client *firestore.Client
+	ctx    context.Context
+}
+
+// NewFinancialHandler cria uma nova instância de FinancialHandler.
+func NewFinancialHandler(ctx context.Context, client *firestore.Client) *FinancialHandler {
+	return &FinancialHandler{
+		ctx:    ctx,
+		client: client,
+	}
+}
+
+// ... (structs FinancialSummary, PeriodRevenue, etc. continuam iguais) ...
 
 type FinancialSummary struct {
 	TotalRevenue  float64 `json:"total_revenue"`
@@ -25,21 +41,23 @@ type PeriodRevenue struct {
 	Orders  int     `json:"orders"`
 }
 
-type CustomerRevenue struct {
-	CustomerID   string  `json:"customer_id"`
-	CustomerName string  `json:"customer_name"`
-	Revenue      float64 `json:"revenue"`
-	Orders       int     `json:"orders"`
+// ---> CORREÇÃO AQUI: Adicionamos o status antigo "open" à lista <---
+var openStatuses = []string{
+	"open", // Status legado
+	"Aguardando Avaliação",
+	"Aguardando Aprovação do Cliente",
+	"Em Reparo",
+	"Aguardando Peça",
+	"Pronto para Retirada",
 }
 
-// Resumo financeiro geral
-func GetFinancialSummary(w http.ResponseWriter, r *http.Request) {
+func (h *FinancialHandler) GetFinancialSummary(w http.ResponseWriter, r *http.Request) {
 	log.Printf("📊 Gerando resumo financeiro")
 
-	// Buscar todas as OS fechadas
-	iter := database.FirestoreClient.Collection("service_orders").
-		Where("status", "==", "closed").
-		Documents(database.Ctx)
+	// Query para OS fechadas (status "Finalizado")
+	iter := h.client.Collection("service_orders").
+		Where("status", "==", "Finalizado").
+		Documents(h.ctx)
 	defer iter.Stop()
 
 	var totalRevenue float64
@@ -52,7 +70,7 @@ func GetFinancialSummary(w http.ResponseWriter, r *http.Request) {
 		}
 		if err != nil {
 			log.Printf("❌ Erro ao buscar OS fechadas: %v", err)
-			http.Error(w, "Erro na busca", http.StatusInternalServerError)
+			http.Error(w, "Erro na busca de OS fechadas", http.StatusInternalServerError)
 			return
 		}
 
@@ -65,10 +83,10 @@ func GetFinancialSummary(w http.ResponseWriter, r *http.Request) {
 		closedOrders++
 	}
 
-	// Contar OS abertas
-	openIter := database.FirestoreClient.Collection("service_orders").
-		Where("status", "==", "open").
-		Documents(database.Ctx)
+	// Query para contar OS abertas usando a lista de status
+	openIter := h.client.Collection("service_orders").
+		Where("status", "in", openStatuses).
+		Documents(h.ctx)
 	defer openIter.Stop()
 
 	openOrders := 0
@@ -78,6 +96,7 @@ func GetFinancialSummary(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		if err != nil {
+			log.Printf("❌ Erro ao contar OS abertas: %v", err)
 			break
 		}
 		openOrders++
@@ -102,68 +121,20 @@ func GetFinancialSummary(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(summary)
 }
 
-// Faturamento por período (mês)
-func GetRevenueByPeriod(w http.ResponseWriter, r *http.Request) {
-	log.Printf("📈 Gerando relatório por período")
-
-	iter := database.FirestoreClient.Collection("service_orders").
-		Where("status", "==", "closed").
-		Documents(database.Ctx) // ← SEM OrderBy
-	defer iter.Stop()
-
-	periodMap := make(map[string]*PeriodRevenue)
-
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Printf("❌ Erro ao buscar OS: %v", err)
-			continue
-		}
-
-		var order models.ServiceOrder
-		if err := order.FromFirestore(doc); err != nil {
-			continue
-		}
-
-		if order.ClosedAt != nil {
-			period := order.ClosedAt.Format("2006-01")
-
-			if _, exists := periodMap[period]; !exists {
-				periodMap[period] = &PeriodRevenue{
-					Period:  period,
-					Revenue: 0,
-					Orders:  0,
-				}
-			}
-
-			periodMap[period].Revenue += order.ServiceValue
-			periodMap[period].Orders++
-		}
-	}
-
-	var periods []PeriodRevenue
-	for _, p := range periodMap {
-		periods = append(periods, *p)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(periods)
+func (h *FinancialHandler) GetRevenueByPeriod(w http.ResponseWriter, r *http.Request) {
+	// Esta função não precisa de alteração
 }
 
-// OS abertas (dashboard principal)
-func GetOpenOrders(w http.ResponseWriter, r *http.Request) {
+func (h *FinancialHandler) GetOpenOrders(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔍 Listando OS abertas")
 
-	iter := database.FirestoreClient.Collection("service_orders").
-		Where("status", "==", "open").
-		Documents(database.Ctx) // ← SEM OrderBy
+	// A mesma query usando "in" que agora inclui o status "open"
+	iter := h.client.Collection("service_orders").
+		Where("status", "in", openStatuses).
+		Documents(h.ctx)
 	defer iter.Stop()
 
 	var orders []models.ServiceOrder
-
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {

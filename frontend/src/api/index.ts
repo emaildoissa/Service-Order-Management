@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios from 'axios';
 
 export const api = axios.create({
   baseURL: '/api',
@@ -35,6 +35,11 @@ export interface ServiceOrder {
   work_description?: string;
   created_at: string;
   closed_at?: string;
+
+  // ---> CAMPOS ADICIONADOS AQUI <---
+  reported_defect?: string;
+  accessories?: string;
+  observations?: string;
 }
 
 export interface FinancialSummary {

@@ -1,20 +1,12 @@
 import { useEffect, useState } from "react";
 import { api, Customer, ServiceOrder, FinancialSummary } from "../api";
 import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Chip,
-  CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  Typography,
-  TableRow,
+  Box, Button, Card, CardContent, Chip, CircularProgress, Table,
+  TableBody, TableCell, TableHead, Typography, TableRow, Tooltip
+  // Removi o Grid da importação
 } from "@mui/material";
 import CloseOrderModal from "../components/CloseOrderModal";
+import OrderDetailsModal from "../components/OrderDetailsModal";
 
 export default function Dashboard() {
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
@@ -22,42 +14,31 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
+  
   const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
-  const [showOrderModal, setShowOrderModal] = useState(false);
-
-  const calcularDiasEmAberto = (createdAt: string) => {
-    if (!createdAt) return 0;
-    
-    const dataAbertura = new Date(createdAt);
-    const hoje = new Date();
-    
-    // Usar UTC para evitar problemas de fuso horário
-    const utc1 = Date.UTC(dataAbertura.getFullYear(), dataAbertura.getMonth(), dataAbertura.getDate());
-    const utc2 = Date.UTC(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-    
-    const dias = Math.floor((utc2 - utc1) / (1000 * 60 * 60 * 24));
-    return dias >= 0 ? dias : 0;
-  };
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
 
   const getCustomerName = (customerId: string) => {
     const customer = customers.find((c) => c.id === customerId);
-    return customer?.name || customerId;
+    return customer?.name || "Cliente não encontrado";
   };
 
   const reloadData = async () => {
     setLoading(true);
+    setError("");
     try {
       const [summaryRes, ordersRes, customersRes] = await Promise.all([
         api.get("/financials/summary"),
         api.get("/open-orders"),
-        api.get("/customers"),
+        api.get("/customers"), 
       ]);
       setSummary(summaryRes.data);
       setOpenOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
-      setCustomers(customersRes.data || []);
-    } catch (err) {
+      setCustomers(Array.isArray(customersRes.data) ? customersRes.data : []);
+    } catch (err: any) {
       console.error("Erro ao carregar dashboard:", err);
-      setError("Erro ao carregar dashboard");
+      setError("Erro ao carregar dashboard. Verifique o console do backend para mais detalhes.");
     } finally {
       setLoading(false);
     }
@@ -67,41 +48,52 @@ export default function Dashboard() {
     reloadData();
   }, []);
 
+  const handleOpenDetails = (order: ServiceOrder) => {
+    setSelectedOrder(order);
+    setDetailsModalOpen(true);
+  };
+
+  const handleOpenCloseModal = (order: ServiceOrder) => {
+    setSelectedOrder(order);
+    setCloseModalOpen(true);
+  };
+
   if (loading) return <Box p={4} textAlign="center"><CircularProgress /></Box>;
   if (error) return <Box p={4}><Typography color="error">{error}</Typography></Box>;
 
   return (
     <Box p={3}>
       <Typography variant="h4" gutterBottom>
-        Dashboard - OS Abertas
+        Dashboard
       </Typography>
       
-      <Box display="flex" gap={2} flexWrap="wrap" mb={4}>
-        <Card sx={{ flex: 1, minWidth: 180 }}>
+      {/* ---> SEÇÃO DE CARDS REFEITA COM BOX E FLEXBOX <--- */}
+      <Box display="flex" flexWrap="wrap" gap={2} mb={4}>
+        <Card sx={{ flex: '1 1 200px' }}>
           <CardContent>
-            <Typography color="textSecondary">OS Abertas</Typography>
+            <Typography color="textSecondary" gutterBottom>OS Abertas</Typography>
             <Typography variant="h5">{summary?.open_orders ?? 0}</Typography>
           </CardContent>
         </Card>
-        <Card sx={{ flex: 1, minWidth: 180 }}>
+        <Card sx={{ flex: '1 1 200px' }}>
           <CardContent>
-            <Typography color="textSecondary">Faturamento Total</Typography>
+            <Typography color="textSecondary" gutterBottom>Faturamento Total</Typography>
             <Typography variant="h5">
-              R$ {summary?.total_revenue?.toFixed(2) ?? "0,00"}
+              R$ {summary?.total_revenue?.toFixed(2).replace('.', ',') ?? "0,00"}
             </Typography>
           </CardContent>
         </Card>
-        <Card sx={{ flex: 1, minWidth: 180 }}>
+        <Card sx={{ flex: '1 1 200px' }}>
           <CardContent>
-            <Typography color="textSecondary">Ticket Médio</Typography>
+            <Typography color="textSecondary" gutterBottom>Ticket Médio</Typography>
             <Typography variant="h5">
-              R$ {summary?.average_ticket?.toFixed(2) ?? "0,00"}
+              R$ {summary?.average_ticket?.toFixed(2).replace('.', ',') ?? "0,00"}
             </Typography>
           </CardContent>
         </Card>
-        <Card sx={{ flex: 1, minWidth: 180 }}>
+        <Card sx={{ flex: '1 1 200px' }}>
           <CardContent>
-            <Typography color="textSecondary">OS Fechadas</Typography>
+            <Typography color="textSecondary" gutterBottom>OS Fechadas</Typography>
             <Typography variant="h5">{summary?.closed_orders ?? 0}</Typography>
           </CardContent>
         </Card>
@@ -114,61 +106,68 @@ export default function Dashboard() {
       <Table>
         <TableHead>
           <TableRow>
-            <TableCell>Cliente</TableCell>
-            <TableCell>Equipamento</TableCell>
-            <TableCell>Marca</TableCell>
-            <TableCell>Data Abertura</TableCell>
-            <TableCell>Dias em Aberto</TableCell>
-            <TableCell>Status</TableCell>
-            <TableCell>Ações</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Cliente</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Equipamento</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Defeito Relatado</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Acessórios</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Data Abertura</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>Ações</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {openOrders.map((os) => {
-            const diasAberto = calcularDiasEmAberto(os.created_at);
-            
-            return (
-              <TableRow key={os.id || Math.random()}>
+          {openOrders.map((os) => (
+              <TableRow key={os.id} hover>
                 <TableCell>{getCustomerName(os.customer_id)}</TableCell>
-                <TableCell>{os.equipment_type || "N/A"}</TableCell>
-                <TableCell>{os.equipment_brand || "N/A"}</TableCell>
+                <TableCell>{`${os.equipment_type} ${os.equipment_brand}`}</TableCell>
                 <TableCell>
-                  {os.created_at ? new Date(os.created_at).toLocaleDateString('pt-BR') : "Data não informada"}
+                  <Tooltip title={os.reported_defect || 'Não informado'}>
+                    <Typography noWrap sx={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {os.reported_defect}
+                    </Typography>
+                  </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Chip
-                    label={diasAberto === 0 ? "Hoje" : `${diasAberto} dias`}
-                    color={diasAberto > 7 ? "error" : diasAberto > 3 ? "warning" : "success"}
-                  />
+                  <Tooltip title={os.accessories || 'Nenhum'}>
+                    <Typography noWrap sx={{ maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {os.accessories || 'N/A'}
+                    </Typography>
+                  </Tooltip>
                 </TableCell>
                 <TableCell>
-                  <Chip label={os.status || "unknown"} color="warning" />
+                  {os.created_at ? new Date(os.created_at).toLocaleDateString('pt-BR') : "N/A"}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => {
-                      setSelectedOrder(os);
-                      setShowOrderModal(true);
-                    }}
-                  >
-                    Abrir
+                  <Chip label={os.status || "unknown"} color="warning" size="small" />
+                </TableCell>
+                <TableCell>
+                  <Button size="small" variant="outlined" sx={{ mr: 1 }} onClick={() => handleOpenDetails(os)}>
+                    Detalhes
+                  </Button>
+                  <Button size="small" variant="contained" color="primary" onClick={() => handleOpenCloseModal(os)}>
+                    Fechar OS
                   </Button>
                 </TableCell>
               </TableRow>
-            );
-          })}
+          ))}
         </TableBody>
       </Table>
 
       {selectedOrder && (
+        <OrderDetailsModal
+          order={selectedOrder}
+          open={detailsModalOpen}
+          onClose={() => setDetailsModalOpen(false)}
+          onSaved={reloadData}
+        />
+      )}
+
+      {selectedOrder && (
         <CloseOrderModal
           order={selectedOrder}
-          open={showOrderModal}
-          onClose={() => setShowOrderModal(false)}
+          open={closeModalOpen}
+          onClose={() => setCloseModalOpen(false)}
           onClosed={reloadData}
-          onSaved={reloadData}
         />
       )}
     </Box>

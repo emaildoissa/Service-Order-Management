@@ -17,6 +17,11 @@ type ServiceOrder struct {
 	ServiceValue    float64    `json:"service_value" firestore:"service_value"`
 	CreatedAt       time.Time  `json:"created_at" firestore:"created_at"`
 	ClosedAt        *time.Time `json:"closed_at" firestore:"closed_at"`
+
+	// ---> NOVOS CAMPOS <---
+	ReportedDefect string `json:"reported_defect" firestore:"reported_defect" validate:"required"`
+	Accessories    string `json:"accessories" firestore:"accessories"`
+	Observations   string `json:"observations" firestore:"observations"`
 }
 
 type CloseOrderRequest struct {

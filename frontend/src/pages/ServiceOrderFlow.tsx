@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // <-- IMPORTAR O HOOK
 import { Button, Box, Paper, Typography } from "@mui/material";
 import CustomerSearch from "../components/CustomerSearch";
 import CustomerForm from "../components/CustomerForm";
@@ -8,6 +9,8 @@ import CloseOrderModal from "../components/CloseOrderModal";
 import { Customer, orderAPI, ServiceOrder } from "../api";
 
 export default function ServiceOrderFlow() {
+  const navigate = useNavigate(); // <-- INICIALIZAR O HOOK
+
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showCustomerDetails, setShowCustomerDetails] = useState(false);
@@ -34,14 +37,12 @@ export default function ServiceOrderFlow() {
     setShowCloseModal(true);
   };
 
-  // Criar novo cliente
   const handleCreateRequest = (name: string) => {
     setTempName(name);
     setEditCustomer({ name });
     setShowCustomerModal(true);
   };
 
-  // Salvar cliente novo ou editado
   const handleCustomerSaved = (customer: Customer) => {
     setSelectedCustomer(customer);
     setShowCustomerModal(false);
@@ -50,13 +51,11 @@ export default function ServiceOrderFlow() {
     setTempName("");
   };
 
-  // Selecionar cliente já cadastrado
   const handleCustomerSelected = (customer: Customer) => {
     setSelectedCustomer(customer);
-    setShowCustomerDetails(false);
+    setShowCustomerDetails(false); 
   };
-
-  // Clicar no botão editar (define editCustomer)
+  
   const handleEditCustomer = () => {
     if (selectedCustomer) {
       setEditCustomer(selectedCustomer);
@@ -64,87 +63,85 @@ export default function ServiceOrderFlow() {
     }
   };
 
+  // ---> FUNÇÃO MODIFICADA <---
   const handleOrderCreated = (order: ServiceOrder) => {
-    alert(`✅ OS criada!\nID: ${order.id}`);
-    setShowCustomerDetails(true);
-  };
-
-  const handleOrderClosed = () => {
-    alert("✅ OS fechada com sucesso!");
-    setShowCloseModal(false);
-    setSelectedOrder(null);
+    alert(`✅ OS criada com sucesso para ${selectedCustomer?.name}!`);
+    navigate('/'); // Redireciona para o Dashboard
   };
 
   const reloadOrdersList = async () => {
-    if (selectedCustomer?.id) {
-      try {
-        await orderAPI.listByCustomer(selectedCustomer.id);
-      } catch (error) {
-        console.error("Erro ao recarregar OS:", error);
-      }
-    }
+    // Esta função pode ser otimizada no futuro,
+    // por agora, a lógica de recarregar a lista no dashboard já existe.
+    setShowCloseModal(false);
+    setSelectedOrder(null);
+    // Força o componente de lista a recarregar quando reabrir
+    setShowCustomerDetails(false); 
+    setTimeout(() => setShowCustomerDetails(true), 50);
   };
 
   return (
-    <Box>
-      {/* Cabeçalho de navegação */}
+    <Box sx={{ maxWidth: 900, margin: 'auto', p: 2 }}>
       {selectedCustomer && (
         <Button onClick={resetFlow} sx={{ mb: 2 }}>
-          ← Novo Atendimento
+          ← Buscar Outro Cliente
         </Button>
       )}
 
-      {/* Busca de cliente */}
       {!selectedCustomer && (
         <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">Novo Atendimento</Typography>
+          <Typography variant="h6">Iniciar Novo Atendimento</Typography>
           <CustomerSearch
             onSelect={handleCustomerSelected}
             onCreateRequest={handleCreateRequest}
           />
         </Paper>
       )}
+      
+      {/* Container para as duas visualizações do cliente */}
+      {selectedCustomer && (
+        <Paper sx={{ p: 3, mt: 2 }}>
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box>
+                <Typography variant="h6">
+                  Cliente: {selectedCustomer.name}
+                </Typography>
+                <Typography variant="body2" color="textSecondary">{selectedCustomer.phone_number}</Typography>
+              </Box>
+              <Button onClick={handleEditCustomer} variant="outlined" size="small">
+                Editar Dados
+              </Button>
+          </Box>
+          <hr style={{margin: '16px 0'}}/>
 
-      {/* Formulário de OS */}
-      {selectedCustomer && !showCustomerDetails && (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">
-            Cliente: {selectedCustomer.name}
-            <Button onClick={handleEditCustomer} sx={{ ml: 2 }}>
-              Editar Cliente
-            </Button>
-          </Typography>
-          <Typography variant="body2">{selectedCustomer.phone_number}</Typography>
-          <ServiceOrderForm customer={selectedCustomer} onCreated={handleOrderCreated} />
+          {/* Alterna entre criar nova OS e ver a lista */}
+          {showCustomerDetails ? (
+            <>
+              <Button onClick={() => setShowCustomerDetails(false)} sx={{ mb: 2 }} variant="contained">
+                + Nova OS para este Cliente
+              </Button>
+              <Typography variant="h6" gutterBottom>Ordens de Serviço:</Typography>
+              <ServiceOrderList
+                customerId={selectedCustomer.id!}
+                onCloseRequest={handleCloseRequest}
+                onOpenOrder={handleOpenOrder}
+              />
+            </>
+          ) : (
+             <ServiceOrderForm customer={selectedCustomer} onCreated={handleOrderCreated} />
+          )}
         </Paper>
       )}
 
-      {/* Lista e detalhes do cliente */}
-      {selectedCustomer && showCustomerDetails && (
-        <Paper sx={{ p: 2 }}>
-          <Typography variant="h6">{selectedCustomer.name}</Typography>
-          <Typography variant="body2">{selectedCustomer.phone_number}</Typography>
-          <Button onClick={() => setShowCustomerDetails(false)} sx={{ mt: 1, mb: 1 }}>
-            Nova OS
-          </Button>
-          <Typography variant="subtitle2">Ordens de Serviço:</Typography>
-          <ServiceOrderList
-            customerId={selectedCustomer.id!}
-            onCloseRequest={handleCloseRequest}
-            onOpenOrder={handleOpenOrder}
-          />
-        </Paper>
+
+      {showCustomerModal && (
+        <CustomerForm
+          open={showCustomerModal}
+          initialCustomer={editCustomer || (tempName ? { name: tempName } : undefined)}
+          onClose={() => setShowCustomerModal(false)}
+          onSaved={handleCustomerSaved}
+        />
       )}
 
-      {/* Modal: Cadastrar ou editar cliente */}
-      <CustomerForm
-        open={showCustomerModal}
-        initialCustomer={editCustomer || (tempName ? { name: tempName } : undefined)}
-        onClose={() => setShowCustomerModal(false)}
-        onSaved={handleCustomerSaved}
-      />
-
-      {/* Modal: Fechar ou editar OS */}
       {selectedOrder && (
         <CloseOrderModal
           order={selectedOrder}
