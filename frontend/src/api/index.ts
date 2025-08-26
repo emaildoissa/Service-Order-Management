@@ -35,11 +35,10 @@ export interface ServiceOrder {
   work_description?: string;
   created_at: string;
   closed_at?: string;
-
-  // ---> CAMPOS ADICIONADOS AQUI <---
   reported_defect?: string;
   accessories?: string;
   observations?: string;
+  warranty_days?: number; 
 }
 
 export interface FinancialSummary {
@@ -122,7 +121,7 @@ export const customerAPI = {
 export const orderAPI = {
   create: (o: ServiceOrder) => api.post('/service-orders', o),
   listByCustomer: (customerId: string) => api.get(`/customers/${customerId}/service-orders`),
-  close: (id: string, body: { work_description: string; service_value: number }) =>
+  close: (id: string, body: { work_description: string; service_value: number; warranty_days: number }) =>
     api.put(`/service-orders/${id}/close`, body),
 };
 

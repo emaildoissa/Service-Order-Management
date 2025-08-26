@@ -31,6 +31,20 @@ func (h *ServiceOrderHandler) CreateServiceOrder(w http.ResponseWriter, r *http.
 		http.Error(w, "JSON inválido", http.StatusBadRequest)
 		return
 	}
+
+	// Buscar o nome do cliente para adicionar à OS
+	customerDoc, err := h.client.Collection("customers").Doc(order.CustomerID).Get(h.ctx)
+	if err != nil {
+		http.Error(w, "Cliente não encontrado", http.StatusNotFound)
+		return
+	}
+	var customer models.Customer
+	if err := customer.FromFirestore(customerDoc); err != nil {
+		http.Error(w, "Erro ao processar dados do cliente", http.StatusInternalServerError)
+		return
+	}
+	order.CustomerName = customer.Name // Adiciona o nome do cliente
+
 	if err := validate.Struct(&order); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -143,6 +157,7 @@ func (h *ServiceOrderHandler) CloseServiceOrder(w http.ResponseWriter, r *http.R
 		{Path: "work_description", Value: closeRequest.WorkDescription},
 		{Path: "service_value", Value: closeRequest.ServiceValue},
 		{Path: "closed_at", Value: now},
+		{Path: "warranty_days", Value: closeRequest.WarrantyDays}, // ADICIONADO
 	})
 	if err != nil {
 		log.Printf("❌ Erro ao fechar OS: %v", err)

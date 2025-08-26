@@ -14,7 +14,7 @@ export default function Dashboard() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>("");
-  
+
   const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
@@ -31,7 +31,7 @@ export default function Dashboard() {
       const [summaryRes, ordersRes, customersRes] = await Promise.all([
         api.get("/financials/summary"),
         api.get("/open-orders"),
-        api.get("/customers"), 
+        api.get("/customers"),
       ]);
       setSummary(summaryRes.data);
       setOpenOrders(Array.isArray(ordersRes.data) ? ordersRes.data : []);
@@ -66,7 +66,7 @@ export default function Dashboard() {
       <Typography variant="h4" gutterBottom>
         Dashboard
       </Typography>
-      
+
       {/* ---> SEÇÃO DE CARDS REFEITA COM BOX E FLEXBOX <--- */}
       <Box display="flex" flexWrap="wrap" gap={2} mb={4}>
         <Card sx={{ flex: '1 1 200px' }}>

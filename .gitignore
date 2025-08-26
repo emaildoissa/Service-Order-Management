@@ -16,3 +16,7 @@ bin/
 # Configurações locais
 .env
 .DS_Store
+
+# Credenciais e segredos
+backend/configs/firebase-credentials.json
+*.env
