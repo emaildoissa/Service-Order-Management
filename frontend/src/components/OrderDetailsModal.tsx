@@ -15,6 +15,14 @@ interface Props {
 }
 
 const COMMON_ACCESSORIES = ["Carregador", "Cabo de Força", "Mouse", "Bolsa/Case"];
+const STATUS_OPCOES = [
+  "Aguardando Avaliação",
+  "Aguardando Aprovação do Cliente",
+  "Em Reparo",
+  "Aguardando Peça",
+  "Pronto para Retirada",
+  "Finalizado",
+];
 
 export default function OrderDetailsModal({ order, open, onClose, onSaved }: Props) {
   const [isEditing, setIsEditing] = useState(false);
@@ -26,7 +34,7 @@ export default function OrderDetailsModal({ order, open, onClose, onSaved }: Pro
   useEffect(() => {
     if (order) {
       setFormData(order);
-      
+
       const accessoriesList = order.accessories?.split(', ').filter(Boolean) || [];
       const commonAccs: Record<string, boolean> = {};
       let otherAccs = '';
@@ -44,17 +52,17 @@ export default function OrderDetailsModal({ order, open, onClose, onSaved }: Pro
     }
   }, [order, open]);
 
-  const handleFieldChange = (field: keyof ServiceOrder) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFieldChange = (field: keyof ServiceOrder) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));
   };
-  
+
   const handleAccessoryChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setAccessories({
       ...accessories,
       [event.target.name]: event.target.checked,
     });
   };
-  
+
   const buildAccessoriesString = (): string => {
     const selected = COMMON_ACCESSORIES.filter(acc => accessories[acc]);
     if (otherAccessory.trim()) {
@@ -93,6 +101,21 @@ export default function OrderDetailsModal({ order, open, onClose, onSaved }: Pro
       <DialogTitle>Detalhes da OS - #{order.id?.substring(0, 6).toUpperCase()}</DialogTitle>
       <DialogContent>
         <TextField
+          label="Status"
+          value={formData.status || ""}
+          onChange={handleFieldChange('status')}
+          fullWidth
+          margin="dense"
+          select
+          disabled={!isEditing || formData.status === 'Finalizado'}
+        >
+          {STATUS_OPCOES.map(status => (
+            <MenuItem key={status} value={status}>
+              {status}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
           label="Tipo de Equipamento"
           value={formData.equipment_type || ""}
           onChange={handleFieldChange('equipment_type')}
@@ -117,7 +140,7 @@ export default function OrderDetailsModal({ order, open, onClose, onSaved }: Pro
           onChange={handleFieldChange('observations')}
           fullWidth multiline rows={2} margin="dense" disabled={!isEditing}
         />
-        
+
         <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Acessórios</Typography>
         <FormGroup row>
           {COMMON_ACCESSORIES.map(acc => (
@@ -150,6 +173,6 @@ export default function OrderDetailsModal({ order, open, onClose, onSaved }: Pro
           </Button>
         )}
       </DialogActions>
-    </Dialog> // <-- TAG DE FECHAMENTO ADICIONADA
+    </Dialog>
   );
 }

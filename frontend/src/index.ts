@@ -35,6 +35,7 @@ export const orderAPI = {
     api.get(`/customers/${customerId}/service-orders`),
   close: (id: string, body: { work_description: string; service_value: number }): Promise<AxiosResponse<void>> =>
     api.put(`/service-orders/${id}/close`, body),
+   reopen: (id: string) => api.put(`/service-orders/${id}/reopen`),
 };
 export interface FinancialSummary {
   total_revenue: number;

@@ -6,20 +6,21 @@ import CustomerForm from "../components/CustomerForm";
 import ServiceOrderForm from "../components/ServiceOrderForm";
 import ServiceOrderList from "../components/ServiceOrderList";
 import CloseOrderModal from "../components/CloseOrderModal";
-import OrderDetailsModal from "../components/OrderDetailsModal"; // Importe o modal de detalhes
-import { Customer, ServiceOrder } from "../api";
+import OrderDetailsModal from "../components/OrderDetailsModal";
+import { Customer, ServiceOrder, orderAPI } from "../api";
 
 export default function ServiceOrderFlow() {
   const navigate = useNavigate();
 
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
-  const [showNewOrderForm, setShowNewOrderForm] = useState(false); // Novo estado
+  const [showNewOrderForm, setShowNewOrderForm] = useState(false);
   const [editCustomer, setEditCustomer] = useState<Partial<Customer> | null>(null);
   const [tempName, setTempName] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<ServiceOrder | null>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false); // Novo estado
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [listVersion, setListVersion] = useState(0); // NOVO ESTADO PARA FORÇAR ATUALIZAÇÃO
 
   const resetFlow = () => {
     setSelectedCustomer(null);
@@ -27,6 +28,34 @@ export default function ServiceOrderFlow() {
     setShowNewOrderForm(false);
     setEditCustomer(null);
     setTempName("");
+  };
+
+  // ESTA FUNÇÃO AGORA APENAS INCREMENTA A VERSÃO DA LISTA
+  const reloadOrders = () => {
+    setShowCloseModal(false);
+    setShowDetailsModal(false);
+    setSelectedOrder(null);
+    setListVersion((v) => v + 1); // Incrementa para forçar o useEffect a rodar de novo
+  };
+  
+  const handleReopenOrder = async (order: ServiceOrder) => {
+    if (
+      !window.confirm(
+        `Tem certeza que deseja reabrir a OS do equipamento ${order.equipment_type} ${order.equipment_brand}? O valor e a garantia serão zerados.`
+      )
+    ) {
+      return;
+    }
+    if (order.id) {
+      try {
+        await orderAPI.reopen(order.id);
+        alert("OS reaberta com sucesso!");
+        reloadOrders(); // Chama a função de recarregar
+      } catch (error) {
+        console.error("Erro ao reabrir a OS:", error);
+        alert("Falha ao reabrir a OS.");
+      }
+    }
   };
 
   const handleOpenDetails = (order: ServiceOrder) => {
@@ -67,18 +96,9 @@ export default function ServiceOrderFlow() {
   const handleOrderCreated = (order: ServiceOrder) => {
     alert(`✅ OS criada com sucesso para ${selectedCustomer?.name}!`);
     setShowNewOrderForm(false); // Volta para a lista
-    // Forçar recarregamento da lista
-    setSelectedCustomer(prev => prev ? { ...prev } : null);
+    reloadOrders();
   };
-
-  const reloadOrders = () => {
-    setShowCloseModal(false);
-    setShowDetailsModal(false);
-    setSelectedOrder(null);
-    // Forçar recarregamento da lista
-    setSelectedCustomer(prev => prev ? { ...prev } : null);
-  };
-
+  
   return (
     <Box sx={{ maxWidth: 1200, margin: 'auto', p: 2 }}>
       {selectedCustomer && (
@@ -125,6 +145,8 @@ export default function ServiceOrderFlow() {
                 customerId={selectedCustomer.id!}
                 onCloseRequest={handleCloseRequest}
                 onOpenOrder={handleOpenDetails}
+                onReopenRequest={handleReopenOrder}
+                key={listVersion} // Adicionar a key força a recriação do componente
               />
             </>
           )}

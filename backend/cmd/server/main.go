@@ -52,6 +52,7 @@ func main() {
 	api.HandleFunc("/customers/{customerId}/service-orders", serviceOrderHandler.GetCustomerServiceOrders).Methods("GET")
 	api.HandleFunc("/service-orders/{id}", serviceOrderHandler.UpdateServiceOrder).Methods("PUT")
 	api.HandleFunc("/service-orders/{id}/close", serviceOrderHandler.CloseServiceOrder).Methods("PUT")
+	api.HandleFunc("/service-orders/{id}/reopen", serviceOrderHandler.ReopenServiceOrder).Methods("PUT") // NOVA ROTA
 
 	// Rotas Financeiras
 	api.HandleFunc("/financials/summary", financialHandler.GetFinancialSummary).Methods("GET")

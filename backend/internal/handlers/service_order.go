@@ -175,3 +175,40 @@ func (h *ServiceOrderHandler) CloseServiceOrder(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(order)
 }
+
+func (h *ServiceOrderHandler) ReopenServiceOrder(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	orderID := vars["id"]
+	log.Printf("🔓 Reabrindo OS: %s", orderID)
+
+	if orderID == "" {
+		http.Error(w, "orderID obrigatório", http.StatusBadRequest)
+		return
+	}
+
+	// Atualiza os campos para reverter o fechamento
+	_, err := h.client.Collection("service_orders").Doc(orderID).Update(h.ctx, []firestore.Update{
+		{Path: "status", Value: "Aguardando Avaliação"},
+		{Path: "work_description", Value: ""},
+		{Path: "service_value", Value: 0},
+		{Path: "closed_at", Value: nil},
+		{Path: "warranty_days", Value: 0},
+	})
+	if err != nil {
+		log.Printf("❌ Erro ao reabrir OS: %v", err)
+		http.Error(w, "Erro ao reabrir ordem", http.StatusInternalServerError)
+		return
+	}
+
+	doc, err := h.client.Collection("service_orders").Doc(orderID).Get(h.ctx)
+	if err != nil {
+		http.Error(w, "Erro ao buscar ordem atualizada", http.StatusInternalServerError)
+		return
+	}
+
+	var order models.ServiceOrder
+	order.FromFirestore(doc)
+	log.Printf("✅ OS reaberta: %s", orderID)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(order)
+}

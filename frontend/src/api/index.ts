@@ -123,6 +123,8 @@ export const orderAPI = {
   listByCustomer: (customerId: string) => api.get(`/customers/${customerId}/service-orders`),
   close: (id: string, body: { work_description: string; service_value: number; warranty_days: number }) =>
     api.put(`/service-orders/${id}/close`, body),
+  reopen: (id: string) => api.put(`/service-orders/${id}/reopen`),
+  update: (id: string, body: Partial<ServiceOrder>) => api.put(`/service-orders/${id}`, body),
 };
 
 // API financeira

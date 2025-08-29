@@ -14,14 +14,16 @@ import {
 
 interface Props {
   customerId: string;
-  onCloseRequest(os: ServiceOrder): void;
-  onOpenOrder(os: ServiceOrder): void;
+  onCloseRequest: (os: ServiceOrder) => void;
+  onOpenOrder: (os: ServiceOrder) => void;
+  onReopenRequest?: (os: ServiceOrder) => void; // CORREÇÃO: Prop agora é opcional
 }
 
 export default function ServiceOrderList({
   customerId,
   onCloseRequest,
   onOpenOrder,
+  onReopenRequest, // Prop agora é opcional
 }: Props) {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,12 +40,6 @@ export default function ServiceOrderList({
       });
   }, [customerId]);
 
-  /**
-   * Verifica se uma OS ainda está na garantia.
-   * @param closeDate Data de fechamento da OS.
-   * @param warrantyDays Dias de garantia definidos para a OS.
-   * @returns `true` se estiver na garantia, `false` caso contrário.
-   */
   const checkWarranty = (
     closeDate?: string,
     warrantyDays?: number
@@ -131,6 +127,16 @@ export default function ServiceOrderList({
                 >
                   Detalhes
                 </Button>
+                {isClosed && onReopenRequest && ( // CORREÇÃO: Renderização condicional
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => onReopenRequest(os)}
+                  >
+                    Reabrir OS
+                  </Button>
+                )}
                 {!isClosed && (
                   <Button
                     size="small"
