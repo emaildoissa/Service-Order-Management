@@ -75,7 +75,10 @@ func (h *ServiceOrderHandler) GetCustomerServiceOrders(w http.ResponseWriter, r 
 		OrderBy("created_at", firestore.Desc).
 		Documents(h.ctx)
 	defer iter.Stop()
-	var orders []models.ServiceOrder
+
+	// Alteração aqui: Inicialize a slice para que não seja nil.
+	orders := make([]models.ServiceOrder, 0)
+
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -93,6 +96,12 @@ func (h *ServiceOrderHandler) GetCustomerServiceOrders(w http.ResponseWriter, r 
 		}
 		orders = append(orders, order)
 	}
+
+	// Com a alteração acima, esta verificação se torna opcional, mas é uma boa prática.
+	if orders == nil {
+		orders = make([]models.ServiceOrder, 0)
+	}
+
 	log.Printf("✅ Encontradas %d ordens", len(orders))
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(orders)
@@ -111,7 +120,7 @@ func (h *ServiceOrderHandler) UpdateServiceOrder(w http.ResponseWriter, r *http.
 	for key, value := range updates {
 		switch key {
 		case "equipment_type", "equipment_brand", "equipment_model",
-			"reported_defect", "observations", "accessories", "status":
+			"reported_defect", "observations", "accessories", "status", "hd_type", "memory_size", "processor":
 			firestoreUpdates = append(firestoreUpdates, firestore.Update{Path: key, Value: value})
 		}
 	}

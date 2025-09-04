@@ -131,6 +131,7 @@ func (h *FinancialHandler) GetOpenOrders(w http.ResponseWriter, r *http.Request)
 	// A mesma query usando "in" que agora inclui o status "open"
 	iter := h.client.Collection("service_orders").
 		Where("status", "in", openStatuses).
+		OrderBy("created_at", firestore.Desc).
 		Documents(h.ctx)
 	defer iter.Stop()
 

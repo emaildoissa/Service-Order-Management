@@ -21,13 +21,16 @@ type ServiceOrder struct {
 	ReportedDefect  string     `json:"reported_defect" firestore:"reported_defect" validate:"required"`
 	Accessories     string     `json:"accessories" firestore:"accessories"`
 	Observations    string     `json:"observations" firestore:"observations"`
-	WarrantyDays    int        `json:"warranty_days" firestore:"warranty_days"` // NOVO CAMPO
+	WarrantyDays    int        `json:"warranty_days" firestore:"warranty_days"`
+	HDType          string     `json:"hd_type,omitempty" firestore:"hd_type,omitempty"`
+	MemorySize      string     `json:"memory_size,omitempty" firestore:"memory_size,omitempty"`
+	Processor       string     `json:"processor,omitempty" firestore:"processor,omitempty"`
 }
 
 type CloseOrderRequest struct {
 	WorkDescription string  `json:"work_description" validate:"required"`
 	ServiceValue    float64 `json:"service_value" validate:"required,min=0"`
-	WarrantyDays    int     `json:"warranty_days" validate:"required,min=0"` // NOVO CAMPO
+	WarrantyDays    int     `json:"warranty_days" validate:"required,min=0"`
 }
 
 func (so *ServiceOrder) FromFirestore(doc *firestore.DocumentSnapshot) error {

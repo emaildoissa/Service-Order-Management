@@ -1,9 +1,10 @@
+// frontend/src/pages/Dashboard.tsx
+
 import { useEffect, useState } from "react";
 import { api, Customer, ServiceOrder, FinancialSummary } from "../api";
 import {
   Box, Button, Card, CardContent, Chip, CircularProgress, Table,
   TableBody, TableCell, TableHead, Typography, TableRow, Tooltip
-  // Removi o Grid da importação
 } from "@mui/material";
 import CloseOrderModal from "../components/CloseOrderModal";
 import OrderDetailsModal from "../components/OrderDetailsModal";
@@ -25,6 +26,9 @@ export default function Dashboard() {
   };
 
   const reloadData = async () => {
+    // Para evitar múltiplas chamadas se já estiver carregando
+    if (loading && summary) return;
+
     setLoading(true);
     setError("");
     try {
@@ -45,8 +49,17 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    // 1. Carrega os dados na primeira vez que o componente monta
     reloadData();
-  }, []);
+
+    // 2. Adiciona um listener para recarregar os dados sempre que a aba ganhar foco
+    window.addEventListener('focus', reloadData);
+
+    // 3. Função de limpeza: remove o listener quando o componente for desmontado
+    return () => {
+      window.removeEventListener('focus', reloadData);
+    };
+  }, []); // O array vazio garante que os listeners são adicionados e removidos apenas uma vez
 
   const handleOpenDetails = (order: ServiceOrder) => {
     setSelectedOrder(order);
@@ -67,7 +80,7 @@ export default function Dashboard() {
         Dashboard
       </Typography>
 
-      {/* ---> SEÇÃO DE CARDS REFEITA COM BOX E FLEXBOX <--- */}
+      {/* Seção de Cards */}
       <Box display="flex" flexWrap="wrap" gap={2} mb={4}>
         <Card sx={{ flex: '1 1 200px' }}>
           <CardContent>
@@ -103,6 +116,7 @@ export default function Dashboard() {
         Ordens de Serviço Abertas ({openOrders.length})
       </Typography>
 
+      {/* Tabela de OS Abertas */}
       <Table>
         <TableHead>
           <TableRow>

@@ -39,6 +39,9 @@ export interface ServiceOrder {
   accessories?: string;
   observations?: string;
   warranty_days?: number; 
+   hd_type?: string;
+  memory_size?: string;
+  processor?: string;
 }
 
 export interface FinancialSummary {

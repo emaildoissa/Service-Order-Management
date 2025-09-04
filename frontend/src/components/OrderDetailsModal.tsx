@@ -127,7 +127,42 @@ export default function OrderDetailsModal({ order, open, onClose, onSaved }: Pro
         </TextField>
         <TextField label="Marca" value={formData.equipment_brand || ""} onChange={handleFieldChange('equipment_brand')} fullWidth margin="dense" disabled={!isEditing} />
         <TextField label="Modelo" value={formData.equipment_model || ""} onChange={handleFieldChange('equipment_model')} fullWidth margin="dense" disabled={!isEditing} />
-
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+          Especificações do Equipamento
+        </Typography>
+        <TextField 
+          label="Processador" 
+          value={formData.processor || ""} 
+          onChange={handleFieldChange('processor')} 
+          fullWidth 
+          margin="dense" 
+          disabled={!isEditing}
+          placeholder="Ex: Intel Core i5-8250U" 
+        />
+        <TextField 
+          label="Memória RAM" 
+          value={formData.memory_size || ""} 
+          onChange={handleFieldChange('memory_size')} 
+          fullWidth 
+          margin="dense" 
+          disabled={!isEditing}
+          placeholder="Ex: 8GB DDR4" 
+        />
+        <TextField
+          label="Tipo de Armazenamento"
+          value={formData.hd_type || ""}
+          onChange={handleFieldChange('hd_type')}
+          fullWidth
+          margin="dense"
+          select
+          disabled={!isEditing}
+        >
+          <MenuItem value=""></MenuItem>
+          <MenuItem value="HDD">HDD (Disco Rígido)</MenuItem>
+          <MenuItem value="SSD">SSD</MenuItem>
+          <MenuItem value="SSD M.2">SSD M.2</MenuItem>
+          <MenuItem value="eMMC">eMMC</MenuItem>
+        </TextField>
         <TextField
           label="Defeito Relatado pelo Cliente"
           value={formData.reported_defect || ""}
