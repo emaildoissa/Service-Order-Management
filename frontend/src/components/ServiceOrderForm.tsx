@@ -5,7 +5,7 @@ import { useAsync } from "../hooks/useAsync";
 import { orderAPI, ServiceOrder, Equipment } from "../api";
 
 interface Props {
-  equipment: Equipment; // <-- Recebe o equipamento
+  equipment: Equipment;
   onCreated: (order: ServiceOrder) => void;
   onCancel: () => void;
 }

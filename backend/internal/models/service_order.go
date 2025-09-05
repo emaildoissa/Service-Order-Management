@@ -31,7 +31,8 @@ type ServiceOrder struct {
 type CloseOrderRequest struct {
 	WorkDescription string  `json:"work_description" validate:"required"`
 	ServiceValue    float64 `json:"service_value" validate:"required,min=0"`
-	WarrantyDays    int     `json:"warranty_days" validate:"required,min=0"`
+	//WarrantyDays    int     `json:"warranty_days" validate:"required,min=0"`
+	WarrantyDays int `json:"warranty_days" validate:"gte=0"`
 }
 
 func (so *ServiceOrder) FromFirestore(doc *firestore.DocumentSnapshot) error {

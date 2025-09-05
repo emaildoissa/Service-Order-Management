@@ -1,3 +1,4 @@
+// backend/internal/handlers/financial.go
 package handlers
 
 import (
@@ -5,6 +6,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"sort"
 
 	"cloud.google.com/go/firestore"
 	"github.com/emaildoissa/service-order-management/backend/internal/models"
@@ -25,23 +27,6 @@ func NewFinancialHandler(ctx context.Context, client *firestore.Client) *Financi
 	}
 }
 
-// ... (structs FinancialSummary, PeriodRevenue, etc. continuam iguais) ...
-
-type FinancialSummary struct {
-	TotalRevenue  float64 `json:"total_revenue"`
-	TotalOrders   int     `json:"total_orders"`
-	OpenOrders    int     `json:"open_orders"`
-	ClosedOrders  int     `json:"closed_orders"`
-	AverageTicket float64 `json:"average_ticket"`
-}
-
-type PeriodRevenue struct {
-	Period  string  `json:"period"`
-	Revenue float64 `json:"revenue"`
-	Orders  int     `json:"orders"`
-}
-
-// ---> CORREÇÃO AQUI: Adicionamos o status antigo "open" à lista <---
 var openStatuses = []string{
 	"open", // Status legado
 	"Aguardando Avaliação",
@@ -54,7 +39,6 @@ var openStatuses = []string{
 func (h *FinancialHandler) GetFinancialSummary(w http.ResponseWriter, r *http.Request) {
 	log.Printf("📊 Gerando resumo financeiro")
 
-	// Query para OS fechadas (status "Finalizado")
 	iter := h.client.Collection("service_orders").
 		Where("status", "==", "Finalizado").
 		Documents(h.ctx)
@@ -83,7 +67,6 @@ func (h *FinancialHandler) GetFinancialSummary(w http.ResponseWriter, r *http.Re
 		closedOrders++
 	}
 
-	// Query para contar OS abertas usando a lista de status
 	openIter := h.client.Collection("service_orders").
 		Where("status", "in", openStatuses).
 		Documents(h.ctx)
@@ -107,7 +90,7 @@ func (h *FinancialHandler) GetFinancialSummary(w http.ResponseWriter, r *http.Re
 		averageTicket = totalRevenue / float64(closedOrders)
 	}
 
-	summary := FinancialSummary{
+	summary := models.FinancialSummary{
 		TotalRevenue:  totalRevenue,
 		TotalOrders:   closedOrders + openOrders,
 		OpenOrders:    openOrders,
@@ -122,20 +105,74 @@ func (h *FinancialHandler) GetFinancialSummary(w http.ResponseWriter, r *http.Re
 }
 
 func (h *FinancialHandler) GetRevenueByPeriod(w http.ResponseWriter, r *http.Request) {
-	// Esta função não precisa de alteração
+	log.Printf("📅 Gerando relatório de faturamento por período")
+
+	iter := h.client.Collection("service_orders").
+		Where("status", "==", "Finalizado").
+		OrderBy("closed_at", firestore.Asc).
+		Documents(h.ctx)
+	defer iter.Stop()
+
+	revenueMap := make(map[string]*models.PeriodRevenue)
+
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Printf("❌ Erro ao buscar OS fechadas para relatório: %v", err)
+			http.Error(w, "Erro na busca de OS fechadas", http.StatusInternalServerError)
+			return
+		}
+
+		var order models.ServiceOrder
+		if err := order.FromFirestore(doc); err != nil {
+			continue
+		}
+
+		if order.ClosedAt == nil {
+			continue
+		}
+
+		periodKey := order.ClosedAt.Format("2006-01")
+
+		if _, ok := revenueMap[periodKey]; !ok {
+			revenueMap[periodKey] = &models.PeriodRevenue{
+				Period:  periodKey,
+				Revenue: 0,
+				Orders:  0,
+			}
+		}
+
+		revenueMap[periodKey].Revenue += order.ServiceValue
+		revenueMap[periodKey].Orders++
+	}
+
+	periods := make([]models.PeriodRevenue, 0, len(revenueMap))
+	for _, periodData := range revenueMap {
+		periods = append(periods, *periodData)
+	}
+
+	sort.Slice(periods, func(i, j int) bool {
+		return periods[i].Period > periods[j].Period
+	})
+
+	log.Printf("✅ Relatório gerado com %d períodos", len(periods))
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(periods)
 }
 
 func (h *FinancialHandler) GetOpenOrders(w http.ResponseWriter, r *http.Request) {
 	log.Printf("🔍 Listando OS abertas")
 
-	// A mesma query usando "in" que agora inclui o status "open"
 	iter := h.client.Collection("service_orders").
 		Where("status", "in", openStatuses).
 		OrderBy("created_at", firestore.Desc).
 		Documents(h.ctx)
 	defer iter.Stop()
 
-	var orders []models.ServiceOrder
+	orders := make([]models.ServiceOrder, 0)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
@@ -152,6 +189,10 @@ func (h *FinancialHandler) GetOpenOrders(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 		orders = append(orders, order)
+	}
+
+	if orders == nil {
+		orders = make([]models.ServiceOrder, 0)
 	}
 
 	log.Printf("✅ Encontradas %d OS abertas", len(orders))

@@ -3,8 +3,8 @@ import { useState } from "react";
 import { Box, Paper, Typography, Button } from "@mui/material";
 import CustomerSearch from "../components/CustomerSearch";
 import CustomerForm from "../components/CustomerForm";
-import EquipmentList from "../components/EquipmentList"; // <-- NOVO
-import EquipmentForm from "../components/EquipmentForm"; // <-- NOVO
+import EquipmentList from "../components/EquipmentList";
+import EquipmentForm from "../components/EquipmentForm";
 import ServiceOrderForm from "../components/ServiceOrderForm";
 import { Customer, ServiceOrder, Equipment } from "../api";
 
@@ -42,18 +42,19 @@ export default function ServiceOrderFlow() {
   };
   
   const handleEquipmentSaved = (equipment: Equipment) => {
+    // Após salvar, já seleciona o equipamento para a OS
     setSelectedEquipment(equipment);
     setStep(FlowStep.CREATE_ORDER);
   }
 
   const handleOrderCreated = (order: ServiceOrder) => {
-    alert(`✅ OS #${order.id?.substring(0,6).toUpperCase()} criada com sucesso para ${selectedCustomer?.name}!`);
+    alert(`✅ OS criada com sucesso para ${selectedCustomer?.name}!`);
     // Volta para a tela de seleção de equipamento do mesmo cliente
     setSelectedEquipment(null);
     setStep(FlowStep.SELECT_EQUIPMENT);
   };
   
-  // Funções para modais e formulários
+  // Funções para modais de cliente
   const handleCreateRequest = (name: string) => {
     setEditCustomer({ name });
     setShowCustomerModal(true);
@@ -131,7 +132,9 @@ export default function ServiceOrderFlow() {
         </Paper>
       )}
 
-      {renderStep()}
+      <Paper sx={{ p: 3 }}>
+        {renderStep()}
+      </Paper>
 
       {showCustomerModal && (
         <CustomerForm
