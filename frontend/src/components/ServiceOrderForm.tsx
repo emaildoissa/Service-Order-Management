@@ -1,21 +1,21 @@
-import { Button, Checkbox, FormControlLabel, FormGroup, MenuItem, TextField, Typography } from "@mui/material";
+// frontend/src/components/ServiceOrderForm.tsx
+import { Button, Checkbox, FormControlLabel, FormGroup, TextField, Typography, Box } from "@mui/material";
 import { useState } from "react";
 import { useAsync } from "../hooks/useAsync";
-import { orderAPI, ServiceOrder, Customer } from "../api";
+import { orderAPI, ServiceOrder, Equipment } from "../api";
 
 interface Props {
-  customer: Customer;
-  onCreated(order: ServiceOrder): void;
+  equipment: Equipment; // <-- Recebe o equipamento
+  onCreated: (order: ServiceOrder) => void;
+  onCancel: () => void;
 }
 
 const COMMON_ACCESSORIES = ["Carregador", "Cabo de Força", "Mouse", "Bolsa/Case"];
 
-export default function ServiceOrderForm({ customer, onCreated }: Props) {
+export default function ServiceOrderForm({ equipment, onCreated, onCancel }: Props) {
   const [order, setOrder] = useState<Partial<ServiceOrder>>({
-    customer_id: customer.id!,
-    equipment_type: "notebook",
-    equipment_brand: "",
-    equipment_model: "",
+    customer_id: equipment.owner_id,
+    equipment_id: equipment.id!,
     status: "Aguardando Avaliação",
   });
   
@@ -40,7 +40,7 @@ export default function ServiceOrderForm({ customer, onCreated }: Props) {
   }
 
   const handleSubmit = () => {
-    const finalOrder: ServiceOrder = {
+    const finalOrder = {
       ...order,
       accessories: buildAccessoriesString(),
       created_at: new Date().toISOString(),
@@ -58,39 +58,9 @@ export default function ServiceOrderForm({ customer, onCreated }: Props) {
   return (
     <>
       <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-        Nova OS para {customer.name}
+        Nova OS para {equipment.type} {equipment.brand} ({equipment.owner_name})
       </Typography>
       
-      {/* Dados do Equipamento */}
-      <TextField
-        select
-        label="Tipo de Equipamento"
-        value={order.equipment_type}
-        onChange={handleFieldChange('equipment_type')}
-        fullWidth
-        margin="dense"
-      >
-        <MenuItem value="notebook">Notebook</MenuItem>
-        <MenuItem value="pc">PC (Desktop)</MenuItem>
-        <MenuItem value="monitor">Monitor</MenuItem>
-      </TextField>
-      <TextField
-        label="Marca"
-        value={order.equipment_brand}
-        onChange={handleFieldChange('equipment_brand')}
-        fullWidth
-        required
-        margin="dense"
-      />
-      <TextField
-        label="Modelo"
-        value={order.equipment_model}
-        onChange={handleFieldChange('equipment_model')}
-        fullWidth
-        margin="dense"
-      />
-      
-      {/* Defeito e Observações */}
       <TextField
         label="Defeito Relatado pelo Cliente"
         value={order.reported_defect || ""}
@@ -112,7 +82,6 @@ export default function ServiceOrderForm({ customer, onCreated }: Props) {
         placeholder="Arranhão na tampa, adesivado, etc."
       />
       
-      {/* Acessórios */}
       <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Acessórios Deixados</Typography>
       <FormGroup row>
         {COMMON_ACCESSORIES.map(acc => (
@@ -133,9 +102,14 @@ export default function ServiceOrderForm({ customer, onCreated }: Props) {
       />
 
       {error && <Typography color="error" sx={{ mt: 2 }}>{error}</Typography>}
-      <Button variant="contained" disabled={loading} onClick={handleSubmit} sx={{ mt: 3 }}>
-        {loading ? "Salvando..." : "Criar Ordem de Serviço"}
-      </Button>
+      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+        <Button variant="contained" disabled={loading || !order.reported_defect} onClick={handleSubmit}>
+          {loading ? "Salvando..." : "Criar Ordem de Serviço"}
+        </Button>
+        <Button variant="outlined" onClick={onCancel} disabled={loading}>
+          Cancelar
+        </Button>
+      </Box>
     </>
   );
 }

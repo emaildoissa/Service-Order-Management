@@ -24,22 +24,39 @@ export interface Customer {
   cep?: string;
 }
 
+export interface Equipment {
+  id?: string;
+  owner_id: string;
+  owner_name: string;
+  type: string;
+  brand: string;
+  model?: string;
+  serial_number?: string;
+  processor?: string;
+  memory_size?: string;
+  hd_type?: string;
+  created_at?: string;
+}
+
 export interface ServiceOrder {
   id?: string;
   customer_id: string;
+  equipment_id: string; // <-- Campo principal agora
+  // Campos denormalizados (copiados do equipamento para a OS)
   equipment_type: string;
   equipment_brand: string;
   equipment_model?: string;
+  // Campos específicos da OS
   status?: string;
-  service_value?: number;
-  work_description?: string;
-  created_at: string;
-  closed_at?: string;
   reported_defect?: string;
   accessories?: string;
   observations?: string;
-  warranty_days?: number; 
-   hd_type?: string;
+  work_description?: string;
+  service_value?: number;
+  warranty_days?: number;
+  created_at: string;
+  closed_at?: string;
+  hd_type?: string;
   memory_size?: string;
   processor?: string;
 }
@@ -121,15 +138,21 @@ export const customerAPI = {
     })),
 };
 
+export const equipmentAPI = {
+  create: (e: Partial<Equipment>) => api.post<Equipment>('/equipments', e),
+  listByCustomer: (customerId: string) => api.get<Equipment[]>(`/customers/${customerId}/equipments`),
+};
+
+
 export const orderAPI = {
-  create: (o: ServiceOrder) => api.post('/service-orders', o),
+  // O 'create' agora recebe um objeto mais simples
+  create: (o: Partial<ServiceOrder>) => api.post('/service-orders', o),
   listByCustomer: (customerId: string) => api.get(`/customers/${customerId}/service-orders`),
   close: (id: string, body: { work_description: string; service_value: number; warranty_days: number }) =>
     api.put(`/service-orders/${id}/close`, body),
   reopen: (id: string) => api.put(`/service-orders/${id}/reopen`),
   update: (id: string, body: Partial<ServiceOrder>) => api.put(`/service-orders/${id}`, body),
 };
-
 // API financeira
 export const financialAPI = {
   getSummary: () => api.get('/financials/summary'),

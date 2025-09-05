@@ -32,31 +32,42 @@ func (h *ServiceOrderHandler) CreateServiceOrder(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Buscar o nome do cliente para adicionar à OS
-	customerDoc, err := h.client.Collection("customers").Doc(order.CustomerID).Get(h.ctx)
+	// Validação de campos obrigatórios como customer_id e equipment_id
+	if order.CustomerID == "" || order.EquipmentID == "" {
+		http.Error(w, "CustomerID e EquipmentID são obrigatórios", http.StatusBadRequest)
+		return
+	}
+
+	// Busca o equipamento para denormalizar os dados na OS
+	equipDoc, err := h.client.Collection("equipments").Doc(order.EquipmentID).Get(h.ctx)
 	if err != nil {
-		http.Error(w, "Cliente não encontrado", http.StatusNotFound)
+		http.Error(w, "Equipamento não encontrado", http.StatusNotFound)
 		return
 	}
-	var customer models.Customer
-	if err := customer.FromFirestore(customerDoc); err != nil {
-		http.Error(w, "Erro ao processar dados do cliente", http.StatusInternalServerError)
-		return
-	}
-	order.CustomerName = customer.Name // Adiciona o nome do cliente
+	var equipment models.Equipment
+	equipment.FromFirestore(equipDoc)
+
+	// Preenche os dados denormalizados
+	order.CustomerName = equipment.OwnerName
+	order.EquipmentType = equipment.Type
+	order.EquipmentBrand = equipment.Brand
+	order.EquipmentModel = equipment.Model
+
+	order.Status = "Aguardando Avaliação"
+	order.CreatedAt = time.Now()
 
 	if err := validate.Struct(&order); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	order.Status = "Aguardando Avaliação"
-	order.CreatedAt = time.Now()
+
 	docRef, _, err := h.client.Collection("service_orders").Add(h.ctx, order)
 	if err != nil {
 		http.Error(w, "Erro ao criar ordem de serviço", http.StatusInternalServerError)
 		return
 	}
 	order.ID = docRef.ID
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(order)

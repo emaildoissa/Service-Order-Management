@@ -37,6 +37,7 @@ func main() {
 	customerHandler := handlers.NewCustomerHandler(ctx, client)
 	serviceOrderHandler := handlers.NewServiceOrderHandler(ctx, client)
 	financialHandler := handlers.NewFinancialHandler(ctx, client)
+	equipmentHandler := handlers.NewEquipmentHandler(ctx, client)
 
 	api := r.PathPrefix("/api").Subrouter()
 
@@ -58,6 +59,10 @@ func main() {
 	api.HandleFunc("/financials/summary", financialHandler.GetFinancialSummary).Methods("GET")
 	api.HandleFunc("/financials/by-period", financialHandler.GetRevenueByPeriod).Methods("GET")
 	api.HandleFunc("/open-orders", financialHandler.GetOpenOrders).Methods("GET")
+
+	// Rotas Equipamentos
+	api.HandleFunc("/equipments", equipmentHandler.CreateEquipment).Methods("POST")
+	api.HandleFunc("/customers/{customerId}/equipments", equipmentHandler.GetEquipmentsByCustomer).Methods("GET")
 
 	// CORS
 	corsHandler := gorillahandlers.CORS(
